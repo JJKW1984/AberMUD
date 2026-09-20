@@ -28,8 +28,6 @@
 #include <pragmas/socket_pragmas.h>
 #endif
 
-extern int errno;
-
 static struct sockaddr_in myaddress;
 static int master_socket;
 
