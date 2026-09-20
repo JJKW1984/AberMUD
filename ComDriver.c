@@ -397,6 +397,7 @@ int Check_Password(int u, char *pwentry, int retflg)
 		SendTPacket(UserList[u].us_Port,PACKET_SETPROMPT,"----*");
 /*	SendUser(u,"Welcome to AberMUD V %s\n",UserList[u].us_Name);	*/
 	AddWord(UserList[u].us_Name,(short)(10000+u),WD_NOUN);	/* Add name word */
+	UserList[u].us_Flags|=UF_NAMEWORD;
 	UserList[u].us_Item=CreateItem(UserList[u].us_Name,-1,10000+u);
 	LockItem(UserList[u].us_Item);	/* Lock for userlist entry */
 	MakePlayer(UserList[u].us_Item);
@@ -535,6 +536,7 @@ int CreatePersona(int u, char *pw)
 		SendTPacket(UserList[u].us_Port,PACKET_SETPROMPT,"----*");
 /*	SendUser(u,"Welcome to AberMUD V %s\n",UserList[u].us_Name);	*/
 	AddWord(UserList[u].us_Name,(short)(10000+u),WD_NOUN);	/* Add name word */
+	UserList[u].us_Flags|=UF_NAMEWORD;
 	UserList[u].us_Item=CreateItem(UserList[u].us_Name,-1,10000+u);
 	LockItem(UserList[u].us_Item);	/* Lock for userlist entry */
 	MakePlayer(UserList[u].us_Item);

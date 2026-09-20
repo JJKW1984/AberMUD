@@ -23,6 +23,11 @@
 #define AWAIT_OEND	27
 #define AWAIT_EMAIL	28
 
+#define UF_NAMEWORD	1	/* us_Flags bit: this session's name is registered
+				   in WordList (AddWord was called for it) — only
+				   clear it via FreeWord if this bit is set, see
+				   RemoveUser()/ExitUser() in SysSupport.c */
+
 
 struct User_Entry
 {

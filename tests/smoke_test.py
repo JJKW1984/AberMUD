@@ -138,6 +138,37 @@ def scenario_oversized_line_does_not_crash(t):
     s2.close()
 
 
+@scenario
+def scenario_abandoned_login_does_not_steal_active_name(t):
+    """C3: disconnecting mid-login under someone else's active name must not
+    free that name's WordList reservation (was an unconditional FreeWord()
+    call in RemoveUser, SysSupport.c)."""
+    a = t.connect()
+    t.register(a, "Smoke")  # session A fully registers and logs in as "Smoke"
+    after_a = t.read(a, 0.3)
+
+    # Session B: connect, type the SAME name (existing persona -> goes to
+    # password prompt), then disconnect without sending a password.
+    b = t.connect()
+    t.read(b, 0.5)
+    t.send(b, "Smoke")
+    t.read(b, 0.5)
+    b.close()
+    time.sleep(1.5)  # let FixLineFaults()/RemoveUser() run on the server's ~1s loop
+
+    # Session C: attempt a brand-new registration under the same name. If C3
+    # is present, this succeeds (the name was wrongly freed); it must be
+    # rejected instead, since session A is still logged in as "Smoke".
+    c = t.connect()
+    transcript = t.register(c, "Smoke")
+    assert b"confused with other things" in transcript or b"Password:" in transcript, (
+        "a second registration under an already-active name succeeded — "
+        f"the abandoned login on session B freed it. transcript={transcript!r}"
+    )
+    a.close()
+    c.close()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--server-bin", default="./server")

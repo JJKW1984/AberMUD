@@ -303,7 +303,7 @@ unsigned int u;
 		FreeItem(i);				/* Remove it all */
 	}
 	UserList[(unsigned short)u].us_Item=NULL;
-	if(*UserList[u].us_Name)
+	if(*UserList[u].us_Name && (UserList[u].us_Flags&UF_NAMEWORD))
 		FreeWord(UserList[(unsigned short)u].us_Name,WD_NOUN);
 	strcpy(UserList[(unsigned short)u].us_Name,"");
 	if(UserList[(unsigned short)u].us_Port!=NULL)
@@ -352,7 +352,8 @@ unsigned int u;
 	i->it_Perception=-1;		/* Delayed Expunge */
 	FreeItem(i);
 	UserList[(unsigned short)u].us_Item=NULL;
-	FreeWord(UserList[(unsigned short)u].us_Name,WD_NOUN);
+	if(*UserList[u].us_Name && (UserList[u].us_Flags&UF_NAMEWORD))
+		FreeWord(UserList[(unsigned short)u].us_Name,WD_NOUN);
 	UserList[(unsigned short)u].us_State=AWAIT_NAME;
 }
 	
