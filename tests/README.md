@@ -6,7 +6,7 @@
     python3 tests/smoke_test.py --server-bin ./server
 
 Each scenario boots a fresh, isolated server instance (temp working
-directory, empty UAF, random-ish free port), drives it over raw TCP, and
+directory, empty UAF, port configurable via `--port`), drives it over raw TCP, and
 asserts specific behavior. Exit code is 0 iff every scenario passed.
 
 These are regression tests for the findings fixed in
