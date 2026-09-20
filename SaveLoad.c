@@ -42,6 +42,12 @@ Module	"DiskIO";
 Version	"1.24";
 Author  "----*(A)";
 
+/* A pointer only survives the compiled bytecode's 2x16-bit packed
+   representation if it fits in 32 bits. See docs/review-findings.md
+   finding H2 — this is a safety net, not a fix for the underlying
+   16-bit-word bytecode format. */
+#define FITS_PACKED_WIDTH(p)	(sizeof(void *)<=4 || ((unsigned long)(void *)(p))>>32==0)
+
 extern ITEM *ItemList;
 /*
  *	Items are saved by direct ordered dump, all text dumped is done
@@ -871,6 +877,8 @@ register short *c;
 				case 3:t=(TPTR)3;break;
 				default:t=LoadComment(file);
 			 }
+			 if(!FITS_PACKED_WIDTH(t))
+				 Log("WARNING: loaded table references a pointer too wide to pack safely on this build (see docs/review-findings.md H2) — this line may misbehave");
 			 SetTwo(c,(char *)t);
 			 c+=2;
 			 break;
@@ -880,6 +888,8 @@ register short *c;
 				case 3:t=(TPTR) 3;break;
 				default:t=LoadString(file);
 			 }
+			 if(!FITS_PACKED_WIDTH(t))
+				 Log("WARNING: loaded table references a pointer too wide to pack safely on this build (see docs/review-findings.md H2) — this line may misbehave");
 			 SetTwo(c,(char *)t);
 			 c+=2;
 			 break;
@@ -892,6 +902,8 @@ register short *c;
 				case 9:i=(ITEM *)9;break;
 				default:i=LoadItem(file);
 			 }
+			 if(!FITS_PACKED_WIDTH(i))
+				 Log("WARNING: loaded table references a pointer too wide to pack safely on this build (see docs/review-findings.md H2) — this line may misbehave");
 			 SetTwo(c,(char *)i);
 			 c+=2;
 			 break;
