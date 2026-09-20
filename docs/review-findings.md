@@ -41,6 +41,7 @@ verification** (established by static reading, not independently reproduced).
   recommended as a single pass.
 - **Status**: **Confirmed** (reproduced with ASan; see [build-and-run.md](build-and-run.md) §4.1 for
   reproduction steps).
+- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) 9c85e9e, 90b3a17.
 
 ### C2 — Privilege escalation: wizard status is a hardcoded, self-registerable display name
 
@@ -86,6 +87,7 @@ verification** (established by static reading, not independently reproduced).
   name would very likely succeed identically, but that specific run was not repeated live in this
   pass; recommend maintainers confirm in a controlled/offline environment before treating this as
   fully runtime-verified.
+- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) 86f4d1e.
 
 ### C3 — Abandoned login/registration strips another player's active name reservation
 
@@ -132,6 +134,7 @@ verification** (established by static reading, not independently reproduced).
   a still-connected `UserList[]` entry, not only against `WordList`.
 - **Status**: **Confirmed** (reproduced live against the built server, see
   [build-and-run.md](build-and-run.md) §4.1).
+- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) dafb731, 6cc487f.
 
 ### C4 — Codebase does not compile on a modern standards-conformant C toolchain
 
@@ -159,6 +162,7 @@ verification** (established by static reading, not independently reproduced).
 - **Status**: **Confirmed** (the unmodified repository was built exactly as shipped and reproduced
   every error listed; a minimal patch to a scratch copy — not committed to this repository — was
   then validated to produce a working `server` binary).
+- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) f8fbca1.
 
 ## High
 
@@ -189,6 +193,7 @@ verification** (established by static reading, not independently reproduced).
   file-format-breaking change and should be versioned via the existing `Load_Format` mechanism (see
   [persistence.md](persistence.md) §1.2).
 - **Status**: **Confirmed** by reading `UserFile.c`, `ComDriver.c`, and `FindPW.c` directly.
+- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) 35fa63a.
 
 ### H2 — Action-table item-pointer operands silently truncate on 64-bit builds
 
@@ -224,6 +229,7 @@ verification** (established by static reading, not independently reproduced).
   table operand, which this review did not have available (no populated universe file was present
   in the repository); see [persistence.md](persistence.md) §4 for the open question about how common
   this pattern is in typical game content.
+- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) ed76364.
 
 ### H3 — Missing tests and CI entirely
 
@@ -246,6 +252,7 @@ verification** (established by static reading, not independently reproduced).
   for the pure-logic pieces (`Parser.c` tokenization, `CompileTable.c`/table bytecode round-trips,
   `UserFile.c` endianness swap functions) would be comparatively cheap to add and high-value.
 - **Status**: **Confirmed** (absence directly verified by repository search).
+- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) db833f7 onward.
 
 ## Medium
 
