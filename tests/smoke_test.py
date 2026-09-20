@@ -169,6 +169,46 @@ def scenario_abandoned_login_does_not_steal_active_name(t):
     c.close()
 
 
+RESERVED_WIZARD_NAMES = ["Arashi", "Hobbit", "Debugger", "Bonzo", "Anarchy", "Debugiit"]
+
+
+@scenario
+def scenario_reserved_name_blocked_once_bootstrapped(t):
+    """C2: once a reserved wizard name is already registered, a second,
+    unrelated anonymous connection must NOT be able to register a brand-new
+    persona under that same name (was: ArchWizard() is purely name-based and
+    the registration flow never checked the reserved-name list at all).
+
+    The legitimate session is kept online (not closed, not saved) while the
+    attacker attempts registration: this codebase never persists a freshly
+    registered persona to disk until an explicit in-game save/quit, so the
+    reserved-name check must also recognize a live, not-yet-saved wizard in
+    UserList[], not just an on-disk UAF record."""
+    first = t.connect()
+    t.register(first, "Arashi")  # legitimate first-ever bootstrap must still work
+
+    attacker = t.connect()
+    transcript = t.register(attacker, "Arashi")
+    assert b"reserved" in transcript.lower(), (
+        f"a second registration under 'Arashi' was not rejected as reserved. transcript={transcript!r}"
+    )
+    attacker.close()
+    first.close()
+
+
+@scenario
+def scenario_reserved_name_bootstrap_still_works_on_fresh_game(t):
+    """C2 companion: a brand-new game (no reserved name registered yet) must
+    still be able to register its first admin under a reserved name — this
+    codebase has no other way to create the first wizard."""
+    s = t.connect()
+    transcript = t.register(s, "Hobbit")
+    assert b"-}---" in transcript, (
+        f"first-ever bootstrap registration under a reserved name unexpectedly failed. transcript={transcript!r}"
+    )
+    s.close()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--server-bin", default="./server")

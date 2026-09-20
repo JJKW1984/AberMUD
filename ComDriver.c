@@ -259,6 +259,16 @@ int Name_Got(int u, char *name)
 	UserList[u].us_State=AWAIT_PASSWORD;
 	if(LoadPersona(name,&LoginUFF)==-1)	/* New player ? */
 	{
+		if(NameIsReservedWizardName(name)&&AnyReservedWizardNameRegistered())
+		{
+			SendUser(u,"Sorry that name is reserved.\n");
+			SendTPacket(UserList[u].us_Port,PACKET_SETPROMPT,
+					"By what name shall I call you: ");
+			UserList[u].us_State=AWAIT_NAME;
+			*UserList[u].us_Name=0;
+			PermitInput(u);
+			return(0);
+		}
 #ifdef AGOS
 /*
  *	Nasty hack job number 1
