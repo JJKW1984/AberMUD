@@ -121,6 +121,23 @@ def scenario_server_boots(t):
     s.close()
 
 
+@scenario
+def scenario_oversized_line_does_not_crash(t):
+    """C1: a single line >512 bytes must not crash the server (was a stack
+    buffer overflow in ReadBlock, IPCDirect.c)."""
+    s = t.connect()
+    t.read(s, 0.5)
+    s.sendall(b"a" * 600 + b"\r\n")
+    time.sleep(1.0)
+    assert t.is_alive(), "server crashed after receiving an oversized line"
+    s.close()
+    # server must still be answering new connections afterwards
+    s2 = t.connect()
+    banner = t.read(s2, 1.0)
+    assert len(banner) > 0, "server stopped accepting connections after the oversized line"
+    s2.close()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--server-bin", default="./server")
