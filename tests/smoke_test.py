@@ -18,6 +18,9 @@ import time
 
 SCENARIOS = []  # populated by @scenario as this file grows
 
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+SEED_UAF_SRC = os.path.join(os.path.dirname(__file__), "seed_uaf.c")
+
 
 def scenario(fn):
     """Register a test scenario. Each scenario takes a SmokeTest instance
@@ -32,10 +35,44 @@ class SmokeTest:
         self.port = port
         self.workdir = None
         self.proc = None
+        self._seed_bin = None
 
-    def start_server(self, universe=None):
+    def _build_seed_helper(self):
+        """Compile tests/seed_uaf.c against the engine's own UserFile.o/
+        AnsiBits.o (already built by `make server`) so it links against the
+        real SaveNewPersona()/UFF layout instead of a hand-rolled struct."""
+        if self._seed_bin and os.path.isfile(self._seed_bin):
+            return self._seed_bin
+        userfile_o = os.path.join(REPO_ROOT, "UserFile.o")
+        ansibits_o = os.path.join(REPO_ROOT, "AnsiBits.o")
+        for needed in (userfile_o, ansibits_o):
+            if not os.path.isfile(needed):
+                raise RuntimeError(
+                    f"seeding helper needs {needed} - run 'make server' first"
+                )
+        fd, out_bin = tempfile.mkstemp(prefix="seed_uaf_")
+        os.close(fd)
+        subprocess.run(
+            ["gcc", "-std=gnu17", "-I" + REPO_ROOT, SEED_UAF_SRC,
+             userfile_o, ansibits_o, "-o", out_bin],
+            check=True,
+        )
+        self._seed_bin = out_bin
+        return out_bin
+
+    def start_server(self, universe=None, seed=None):
+        """seed: optional (name, password) tuple. When given, a UAF record
+        for that persona is written into the fresh workdir's UAF file
+        (via the compiled tests/seed_uaf.c helper) before the server is
+        launched, so login/password scenarios can exercise an
+        already-registered persona without going through the in-harness
+        registration flow (which never persists to disk)."""
         self.workdir = tempfile.mkdtemp(prefix="abermud_smoke_")
         open(os.path.join(self.workdir, "UAF"), "wb").close()
+        if seed:
+            name, password = seed
+            seed_bin = self._build_seed_helper()
+            subprocess.run([seed_bin, name, password], cwd=self.workdir, check=True)
         args = [self.server_bin, "-p", str(self.port)]
         if universe:
             shutil.copy(universe, os.path.join(self.workdir, os.path.basename(universe)))
@@ -70,6 +107,9 @@ class SmokeTest:
                 self.proc.wait()
         if self.workdir:
             shutil.rmtree(self.workdir, ignore_errors=True)
+        if self._seed_bin and os.path.isfile(self._seed_bin):
+            os.remove(self._seed_bin)
+            self._seed_bin = None
 
     def is_alive(self):
         return self.proc is not None and self.proc.poll() is None
@@ -209,6 +249,51 @@ def scenario_reserved_name_bootstrap_still_works_on_fresh_game(t):
     s.close()
 
 
+@scenario
+def scenario_full_password_is_checked(t):
+    """H1: login must compare the full password, not just the first 7 of 8
+    bytes (was strncmp(...,7) in Check_Password, ComDriver.c).
+
+    Registering through the harness never persists to disk (CreatePersona()
+    only saves via in-game 'save'/death paths, unreachable without a loaded
+    universe), so a fresh persona is seeded directly into the UAF file
+    before the server starts (see SmokeTest._build_seed_helper /
+    tests/seed_uaf.c). This lands the connecting session on the *existing*
+    persona path (AWAIT_PASSWORD via Check_Password()) instead of the new-
+    registration flow, which is what actually exercises the fixed code."""
+    # Negative case: a different 8-char password sharing the first 7 bytes
+    # must be rejected.
+    s = t.connect()
+    t.read(s, 0.5)
+    t.send(s, "Pwcheck")
+    banner = t.read(s, 0.5)
+    assert b"Password" in banner, (
+        f"expected the seeded persona to reach a password prompt, got: {banner!r}"
+    )
+    t.send(s, "abcdefgX")  # same first 7 bytes, different 8th
+    transcript = t.read(s, 0.8)
+    assert b"-}---" not in transcript, (
+        "login succeeded with a password differing only in the 8th byte — "
+        "the comparison is still truncated"
+    )
+    s.close()
+
+    # Positive case: the correct, full 8-byte password must still log in.
+    s2 = t.connect()
+    t.read(s2, 0.5)
+    t.send(s2, "Pwcheck")
+    t.read(s2, 0.5)
+    t.send(s2, "abcdefgh")
+    transcript2 = t.read(s2, 0.8)
+    assert b"-}---" in transcript2, (
+        f"the correct full password was rejected. transcript={transcript2!r}"
+    )
+    s2.close()
+
+
+scenario_full_password_is_checked.seed = ("Pwcheck", "abcdefgh")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--server-bin", default="./server")
@@ -224,7 +309,7 @@ def main():
         t = SmokeTest(args.server_bin, args.port)
         name = fn.__name__
         try:
-            t.start_server()
+            t.start_server(seed=getattr(fn, "seed", None))
             fn(t)
             print(f"PASS: {name}")
         except Exception as e:  # noqa: BLE001 - smoke test, we want to catch everything

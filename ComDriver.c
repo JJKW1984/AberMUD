@@ -341,7 +341,7 @@ int Check_Password(int u, char *pwentry, int retflg)
 /*
  *	Check the password is correct (on AGOSII the fake password always is)
  */
-	if(strncmp(pwentry,LoginUFF.uff_Password,7))
+	if(strncmp(pwentry,LoginUFF.uff_Password,8))
 	{
 		if(UserList[u].us_State==AWAIT_PASSWORD)
 			UserList[u].us_State=AWAIT_PASSRETRY;
