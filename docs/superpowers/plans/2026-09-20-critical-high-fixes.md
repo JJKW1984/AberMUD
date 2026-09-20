@@ -773,10 +773,10 @@ At the top of `CompileTable.c` (near its other static helpers) and again at the 
    representation if it fits in 32 bits. See docs/review-findings.md
    finding H2 — this is a safety net, not a fix for the underlying
    16-bit-word bytecode format. */
-#define FITS_PACKED_WIDTH(p)	(((unsigned long)(void *)(p))>>32==0)
+#define FITS_PACKED_WIDTH(p)	(sizeof(void *)<=4 || ((unsigned long)(void *)(p))>>32==0)
 ```
 
-(On a 32-bit build `unsigned long` is 32 bits, the shift is a no-op returning `0`, and the macro is always true — safe on both widths.)
+(`sizeof(void*)<=4` short-circuits the `||` on a 32-bit build, so the right-hand shift is never evaluated there — shifting a 32-bit `unsigned long` by 32 bits would otherwise be undefined behavior, not a guaranteed no-op. `||`'s short-circuit guarantees the shift is skipped at runtime whenever the left side is true, which is the standard, safe way to write this, not just a stylistic preference.)
 
 - [ ] **Step 2: Reject at compile time in `CompileTable.c`**
 
