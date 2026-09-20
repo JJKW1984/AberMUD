@@ -353,7 +353,10 @@ unsigned int u;
 	FreeItem(i);
 	UserList[(unsigned short)u].us_Item=NULL;
 	if(*UserList[u].us_Name && (UserList[u].us_Flags&UF_NAMEWORD))
+	{
 		FreeWord(UserList[(unsigned short)u].us_Name,WD_NOUN);
+		UserList[u].us_Flags&=~UF_NAMEWORD;
+	}
 	UserList[(unsigned short)u].us_State=AWAIT_NAME;
 }
 	
