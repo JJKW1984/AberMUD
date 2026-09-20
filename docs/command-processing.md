@@ -85,6 +85,15 @@ superclass chain is acyclic up front** — both simply stop after N hops, which 
 loop but means a genuinely cyclic superclass chain silently truncates lookup rather than being
 diagnosed. This is a robustness note, not a demonstrated crash.
 
+**64-bit fail-closed note**: `CompileTable.c`'s literal item/text pointer packer now rejects (rather
+than silently truncating) any operand whose address doesn't fit the bytecode's packed 32-bit
+representation, and `SaveLoad.c`'s loader warns on the same condition. Since a normal heap pointer on
+a 64-bit build routinely has nonzero bits above bit 31, this means `EditTable`/`LoadTable` reject most
+table lines containing a literal item reference or a text/message operand outright on 64-bit
+servers — which is most real action-table content. This is deliberate, fail-closed behavior, not a
+regression; see [review-findings.md](review-findings.md) H2 for the full rationale and the
+ordinal-based bytecode redesign that would actually resolve it.
+
 ## 4. Built-in verb catalog (selected; full table is the `switch` at [ComDriver.c:829](../ComDriver.c))
 
 Grouped by function (verb codes from the `AddWord(..., N, WD_VERB)` calls in the `INIT` bootstrap,

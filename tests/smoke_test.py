@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 Smoke tests for AberMUD 5.30 critical/high-severity fixes.
-Builds nothing itself — run `make server` first (or pass --skip-build to
-reuse an existing binary). Boots the server in a temp working directory,
-drives it over raw TCP, and asserts each fixed bug stays fixed.
+Builds nothing itself — run `make server` first, then point --server-bin at
+the resulting binary (defaults to ./server). Boots the server in a temp
+working directory, drives it over raw TCP, and asserts each fixed bug stays
+fixed.
 
 Usage: python3 tests/smoke_test.py [--server-bin ../server] [--port 5900]
 """
@@ -207,9 +208,6 @@ def scenario_abandoned_login_does_not_steal_active_name(t):
     )
     a.close()
     c.close()
-
-
-RESERVED_WIZARD_NAMES = ["Arashi", "Hobbit", "Debugger", "Bonzo", "Anarchy", "Debugiit"]
 
 
 @scenario

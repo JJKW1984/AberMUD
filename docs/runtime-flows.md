@@ -99,7 +99,7 @@ sequenceDiagram
         CD->>Client: "Not registered." + society/registration notice, PACKET_SETPROMPT "What sex (M/F)..."
         CD->>CD: us_State = AWAIT_SETSEX
     end
-    Client->>CD: password entered -> Check_Password() strncmp(pwentry, LoginUFF.uff_Password, 7)
+    Client->>CD: password entered -> Check_Password() strncmp(pwentry, LoginUFF.uff_Password, 8)
     alt correct password
         CD->>CD: reject if name collides with any WD_NOUN/WD_NOISE/WD_PREP/WD_ORDIN vocabulary word
         CD->>CD: build player ITEM (CreateItem, MakePlayer), copy UFF fields into it, LinkItem into autostart room (adj=1,noun=1)
@@ -124,12 +124,13 @@ Key points confirmed while tracing/running this flow:
   so the "email address required, then choose a password" registration flow is always active in
   this build regardless of the same-named macro in `System.h`. See
   [review-findings.md](review-findings.md) for the maintainability issue this creates.
-- Login only ever compares the **first 7 bytes** of the password
-  (`strncmp(pwentry,LoginUFF.uff_Password,7)`, [ComDriver.c:334](../ComDriver.c)) against an 8-byte
-  fixed field — see [review-findings.md](review-findings.md).
-- **Runtime-verified defect**: two simultaneous logins under the same name are not prevented — see
-  [review-findings.md](review-findings.md) "Stale name reservation after abandoned login"
-  (`FreeWord` bug).
+- This was fixed — see [review-findings.md](review-findings.md) H1 — the comparison now checks the
+  full 8 bytes of the password field (`strncmp(pwentry,LoginUFF.uff_Password,8)`,
+  [ComDriver.c:334](../ComDriver.c)); previously it only compared the first 7 of 8 bytes.
+- This was fixed (C3) — see [review-findings.md](review-findings.md) "Stale name reservation after
+  abandoned login" (`FreeWord` bug) — an abandoned login/registration no longer strips another
+  player's active name reservation. Also fixed (C2): new registration under a reserved wizard
+  identity name is now blocked once that name is already registered.
 
 ## 3. A player command: input packet → command implementation
 

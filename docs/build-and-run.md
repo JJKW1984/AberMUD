@@ -23,7 +23,9 @@ make all  →  server  FindPW  Run_Aber  Reg  docs
 | `client` | `Socket.o Client.o` (links `-lcurses`) | **cannot build — `Client.c` is not present in this repository** |
 | `docs` | runs `nroff -man` over `DOC/*` | **cannot build — no `DOC/` directory in this repository** |
 
-`CC = gcc -Wall -pedantic` (no `-std=` flag, so it uses the compiler's default C dialect).
+`CC = gcc -Wall -pedantic -std=gnu17` — this now pins the C dialect explicitly (previously there was
+no `-std=` flag, so it used the compiler's default C dialect). This was the C4 fix; see §4 below and
+[review-findings.md](review-findings.md) C4.
 
 ## 2. Missing files (confirmed by `ls`/`git ls-files`)
 
@@ -82,7 +84,15 @@ None of these are exotic — they are the direct, predictable fallout of a codeb
 throughout) being compiled with a 2020s-era strict-ANSI/ISO C compiler. They are **build-blocking**,
 not just warnings, on the toolchain used for this review.
 
-## 4. What this review actually did to get a working build (scratch copy only)
+## 4. What this review actually did to get a working build (scratch copy only, originally — since applied for real)
+
+> **Update:** the fix described in this section has since been applied for real and committed to
+> this repository, as Task 1 of the `worktree-fix-critical-high-findings` branch (commit `f8fbca1`,
+> "build: fix errno declarations and relax C standard so the project builds on modern GCC (C4)") —
+> see [review-findings.md](review-findings.md) C4. The Makefile's `CC` line and the four `errno`
+> declarations now match what this section originally validated only in a scratch copy. The
+> narrative below is kept as historical context for *how* that fix was first discovered and
+> validated, before it was committed.
 
 To validate the runtime flows and findings in this documentation set, this review made a **temporary,
 uncommitted copy** of the repository in a scratch directory and applied the minimum patch needed to
@@ -99,10 +109,12 @@ With those two changes, `make server FindPW Run_Aber Reg CC="gcc -std=gnu17 -Wal
 completed successfully in the scratch copy, producing working binaries. `make docs` still fails
 (no `DOC/`, as documented above) and was not attempted further.
 
-**This review recommends these same two changes (or equivalent modernization) be made to the actual
+**This review recommended these same two changes (or equivalent modernization) be made to the actual
 repository by the maintainers**, tracked as a Critical build finding — see
-[review-findings.md](review-findings.md). They were deliberately **not** applied to this checked-in
-copy of the repository, per this review's scope ("do not make unrelated code changes").
+[review-findings.md](review-findings.md). At the time this review was written, they were deliberately
+**not** applied to this checked-in copy of the repository, per this review's scope ("do not make
+unrelated code changes") — they have since been applied for real, as noted at the top of this
+section.
 
 ### 4.1 Runtime validation performed
 

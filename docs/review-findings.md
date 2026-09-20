@@ -87,7 +87,13 @@ verification** (established by static reading, not independently reproduced).
   name would very likely succeed identically, but that specific run was not repeated live in this
   pass; recommend maintainers confirm in a controlled/offline environment before treating this as
   fully runtime-verified.
-- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) 86f4d1e.
+- **Partially fixed (scope):** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s)
+  86f4d1e. This closes the registration path only. A real residual gap remains: persistence to disk
+  only happens via the in-game `save`/`quit`/death action-table opcodes (`Act_Save`, `ActionCode.c`),
+  so on a fresh deployment, if the bootstrap wizard's persona is never saved before a server restart,
+  the reserved name becomes grabbable again by the next anonymous registration (zero wizards on disk
+  after restart). This is strictly better than the pre-patch state (zero protection ever), but is a
+  real, concrete gap, not fully closed.
 
 ### C3 — Abandoned login/registration strips another player's active name reservation
 
@@ -193,7 +199,10 @@ verification** (established by static reading, not independently reproduced).
   file-format-breaking change and should be versioned via the existing `Load_Format` mechanism (see
   [persistence.md](persistence.md) §1.2).
 - **Status**: **Confirmed** by reading `UserFile.c`, `ComDriver.c`, and `FindPW.c` directly.
-- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) 35fa63a.
+- **Partially fixed (scope):** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s)
+  35fa63a. Only the truncated comparison was fixed (the login check now compares the full 8 bytes).
+  Passwords remain stored as plaintext, unsalted, unhashed in `UAF` — hashing is an explicit,
+  deliberate follow-up, not part of this fix.
 
 ### H2 — Action-table item-pointer operands silently truncate on 64-bit builds
 
@@ -223,13 +232,25 @@ verification** (established by static reading, not independently reproduced).
   `SaveItem`/`LoadItem`) rather than a raw address, or an explicit `int64_t`/`intptr_t`-sized pack/
   unpack pair instead of two 16-bit halves. Both the `CompileTable.c` compile-time packer and the
   `SaveLoad.c` save/load packer need the same fix, kept in lock-step.
+- **Note on the deployed safety-net fix**: the `FITS_PACKED_WIDTH` guard added by this branch (see
+  the Fixed line below) is `false` for essentially any real heap pointer on a 64-bit build, since a
+  normal `malloc`/heap address routinely has nonzero bits above bit 31. As a direct consequence,
+  `EditTable`/`LoadTable` now **reject most table lines containing a literal item reference or a
+  text/message operand outright**, with an in-game error, on any 64-bit server — which is most
+  action-table content. This is the intended, deliberate, fail-closed behavior (strictly better than
+  the prior silent truncation), but it means 64-bit table compilation is effectively broken for real
+  content pending the full ordinal-based bytecode-format redesign described above.
 - **Status**: **Confirmed by code reading and pointer-size measurement**. **The runtime
   consequence (an actual wrong-item resolution or crash from this code path) was not independently
   reproduced** in this review — doing so would require game content with a literal item-pointer
   table operand, which this review did not have available (no populated universe file was present
   in the repository); see [persistence.md](persistence.md) §4 for the open question about how common
   this pattern is in typical game content.
-- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) ed76364.
+- **Partially fixed (scope):** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s)
+  ed76364. This adds a safety net (a `FITS_PACKED_WIDTH` guard that rejects an unsafe compile and
+  logs an unsafe load) — it is not the ordinal-based bytecode redesign the remediation section above
+  recommends, and does not change the underlying 16-bit-word packed representation. See the note
+  above this Fixed line for the practical fail-closed consequence of the safety net on 64-bit builds.
 
 ### H3 — Missing tests and CI entirely
 
@@ -252,7 +273,10 @@ verification** (established by static reading, not independently reproduced).
   for the pure-logic pieces (`Parser.c` tokenization, `CompileTable.c`/table bytecode round-trips,
   `UserFile.c` endianness swap functions) would be comparatively cheap to add and high-value.
 - **Status**: **Confirmed** (absence directly verified by repository search).
-- **Fixed:** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s) db833f7 onward.
+- **Partially fixed (scope):** 2026-09-20, see branch worktree-fix-critical-high-findings, commit(s)
+  db833f7 onward. A checked-in Python smoke-test harness (`tests/smoke_test.py`) was added, covering
+  C1–C3 and H1 with live regression scenarios. CI was deliberately not wired in as part of this fix
+  — no `.github/workflows` or equivalent exists yet; that remains a follow-up.
 
 ## Medium
 
@@ -428,16 +452,16 @@ verification** (established by static reading, not independently reproduced).
 
 ## Summary table
 
-| # | Title | Severity | Status |
-|---|---|---|---|
-| C1 | Remote unauthenticated stack buffer overflow in `ReadBlock` | Critical | Confirmed (ASan-reproduced) |
-| C2 | Wizard privilege via self-registerable hardcoded name | Critical | Confirmed by code reading |
-| C3 | Abandoned login strips another player's name reservation | Critical | Confirmed (reproduced live) |
-| C4 | Codebase does not build on a modern C toolchain | Critical | Confirmed (build attempted) |
-| H1 | Cleartext, truncated-comparison passwords | High | Confirmed by code reading |
-| H2 | 64-bit pointer truncation in table item operands | High | Confirmed by code + measurement |
-| H3 | No tests, no CI | High | Confirmed |
-| M1 | `PWNew` uninitialized/OOB heap byte | Medium | Confirmed by code reading |
+| # | Title | Severity | Status | Fix Status |
+|---|---|---|---|---|
+| C1 | Remote unauthenticated stack buffer overflow in `ReadBlock` | Critical | Confirmed (ASan-reproduced) | Fixed |
+| C2 | Wizard privilege via self-registerable hardcoded name | Critical | Confirmed by code reading | Partially fixed |
+| C3 | Abandoned login strips another player's name reservation | Critical | Confirmed (reproduced live) | Fixed |
+| C4 | Codebase does not build on a modern C toolchain | Critical | Confirmed (build attempted) | Fixed |
+| H1 | Cleartext, truncated-comparison passwords | High | Confirmed by code reading | Partially fixed |
+| H2 | 64-bit pointer truncation in table item operands | High | Confirmed by code + measurement | Partially fixed |
+| H3 | No tests, no CI | High | Confirmed | Partially fixed |
+| M1 | `PWNew` uninitialized/OOB heap byte | Medium | Confirmed by code reading | |
 | M2 | Unbounded `%s` into fixed `us_UserName` field | Medium | Confirmed by code + compiler warning |
 | M3 | No locking between server and `Reg`/`FindPW` on `UAF` | Medium | Confirmed by code reading |
 | M4 | `Run_Aber` drops the universe filename argument | Medium | Confirmed by code reading |

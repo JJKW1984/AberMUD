@@ -48,6 +48,14 @@ Author  "----*(A)";
    16-bit-word bytecode format. */
 #define FITS_PACKED_WIDTH(p)	(sizeof(void *)<=4 || ((unsigned long)(void *)(p))>>32==0)
 
+/* Counts FITS_PACKED_WIDTH misses seen by LoadAction() across a whole
+   LoadSystem() pass, so LoadSystem() can emit a single summary warning
+   instead of one Log() call per operand — see docs/review-findings.md H2.
+   LoadAction() runs once per action per line of every table loaded, so
+   logging unconditionally there floods the log (and Log()'s fflush() on
+   every call slows every restart) on any real universe. */
+static int PackWidthWarnCount=0;
+
 extern ITEM *ItemList;
 /*
  *	Items are saved by direct ordered dump, all text dumped is done
@@ -878,7 +886,7 @@ register short *c;
 				default:t=LoadComment(file);
 			 }
 			 if(!FITS_PACKED_WIDTH(t))
-				 Log("WARNING: loaded table references a pointer too wide to pack safely on this build (see docs/review-findings.md H2) — this line may misbehave");
+				 PackWidthWarnCount++;
 			 SetTwo(c,(char *)t);
 			 c+=2;
 			 break;
@@ -889,7 +897,7 @@ register short *c;
 				default:t=LoadString(file);
 			 }
 			 if(!FITS_PACKED_WIDTH(t))
-				 Log("WARNING: loaded table references a pointer too wide to pack safely on this build (see docs/review-findings.md H2) — this line may misbehave");
+				 PackWidthWarnCount++;
 			 SetTwo(c,(char *)t);
 			 c+=2;
 			 break;
@@ -903,7 +911,7 @@ register short *c;
 				default:i=LoadItem(file);
 			 }
 			 if(!FITS_PACKED_WIDTH(i))
-				 Log("WARNING: loaded table references a pointer too wide to pack safely on this build (see docs/review-findings.md H2) — this line may misbehave");
+				 PackWidthWarnCount++;
 			 SetTwo(c,(char *)i);
 			 c+=2;
 			 break;
@@ -1251,6 +1259,7 @@ char *n;
 	if(a==NULL)
 		return(-1);
 	Load_Error=0;
+	PackWidthWarnCount=0;
 	v=ReadHeader(a);	/* Set up items */
 	while(ct<v)
 	{
@@ -1258,6 +1267,8 @@ char *n;
 		ct++;
 	}
 	LoadAllTables(a);
+	if(PackWidthWarnCount>0)
+		Log("WARNING: %d table operand(s) exceeded the safe pointer-packing width during load (see docs/review-findings.md H2)",PackWidthWarnCount);
 	free((char *)ItemArray);	/* Free Reloc Info */
 	LoadVocab(a);
 	if(Load_Format>1)	/* If new format database.. */
