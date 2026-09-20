@@ -182,7 +182,7 @@ unsigned	char	t_iac=IAC,
 		if(c!='\r')
 		{
 			UserInput[u][InputPos[u]++]=c;
-			if(InputPos[u]==513||c=='\n')
+			if(InputPos[u]==511||c=='\n')
 			{
 				if(UserState[u]==0 && UserEcho[u]==1)
 				{
@@ -203,7 +203,8 @@ unsigned	char	t_iac=IAC,
 						CharPut(u,'\n');
 					}
 				}
-				strcpy(pkt->pa_Data,UserInput[u]);
+				strncpy(pkt->pa_Data,UserInput[u],sizeof(pkt->pa_Data)-1);
+				pkt->pa_Data[sizeof(pkt->pa_Data)-1]=0;
 				pkt->pa_Sender=u;
 				if(UserState[u]==2 && UserInput[u][0]=='#')
 					pkt->pa_Type=PACKET_BSXSCENE;	/* BSX process the line */

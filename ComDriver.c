@@ -259,6 +259,16 @@ int Name_Got(int u, char *name)
 	UserList[u].us_State=AWAIT_PASSWORD;
 	if(LoadPersona(name,&LoginUFF)==-1)	/* New player ? */
 	{
+		if(NameIsReservedWizardName(name)&&AnyReservedWizardNameRegistered())
+		{
+			SendUser(u,"Sorry that name is reserved.\n");
+			SendTPacket(UserList[u].us_Port,PACKET_SETPROMPT,
+					"By what name shall I call you: ");
+			UserList[u].us_State=AWAIT_NAME;
+			*UserList[u].us_Name=0;
+			PermitInput(u);
+			return(0);
+		}
 #ifdef AGOS
 /*
  *	Nasty hack job number 1
@@ -331,7 +341,7 @@ int Check_Password(int u, char *pwentry, int retflg)
 /*
  *	Check the password is correct (on AGOSII the fake password always is)
  */
-	if(strncmp(pwentry,LoginUFF.uff_Password,7))
+	if(strncmp(pwentry,LoginUFF.uff_Password,8))
 	{
 		if(UserList[u].us_State==AWAIT_PASSWORD)
 			UserList[u].us_State=AWAIT_PASSRETRY;
@@ -397,6 +407,7 @@ int Check_Password(int u, char *pwentry, int retflg)
 		SendTPacket(UserList[u].us_Port,PACKET_SETPROMPT,"----*");
 /*	SendUser(u,"Welcome to AberMUD V %s\n",UserList[u].us_Name);	*/
 	AddWord(UserList[u].us_Name,(short)(10000+u),WD_NOUN);	/* Add name word */
+	UserList[u].us_Flags|=UF_NAMEWORD;
 	UserList[u].us_Item=CreateItem(UserList[u].us_Name,-1,10000+u);
 	LockItem(UserList[u].us_Item);	/* Lock for userlist entry */
 	MakePlayer(UserList[u].us_Item);
@@ -535,6 +546,7 @@ int CreatePersona(int u, char *pw)
 		SendTPacket(UserList[u].us_Port,PACKET_SETPROMPT,"----*");
 /*	SendUser(u,"Welcome to AberMUD V %s\n",UserList[u].us_Name);	*/
 	AddWord(UserList[u].us_Name,(short)(10000+u),WD_NOUN);	/* Add name word */
+	UserList[u].us_Flags|=UF_NAMEWORD;
 	UserList[u].us_Item=CreateItem(UserList[u].us_Name,-1,10000+u);
 	LockItem(UserList[u].us_Item);	/* Lock for userlist entry */
 	MakePlayer(UserList[u].us_Item);

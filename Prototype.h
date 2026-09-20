@@ -75,6 +75,8 @@ extern void SendItem(); /* VARARGS */
 extern int IsCalled(ITEM *,char *);
 extern void SetName(ITEM *,char *);
 extern int ArchWizard(ITEM *);	/* OPTION TO READ FROM CONFIG FILE DESIRABLE */
+extern int NameIsReservedWizardName(char *);
+extern int AnyReservedWizardNameRegistered(void);
 extern char *NameOf(ITEM *);
 extern char *CNameOf(ITEM *);	/* 128 BYTE LIMIT */
 extern short LevelOf(ITEM *);

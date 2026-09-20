@@ -29,7 +29,7 @@ ECHO    = /bin/echo
 MV	= /bin/mv
 TOUCH   = touch
 
-CC	= gcc -Wall -pedantic
+CC	= gcc -Wall -pedantic -std=gnu17
 
 all     : server FindPW Run_Aber Reg docs
 	@${ECHO}   AberMUD5 is up to date.

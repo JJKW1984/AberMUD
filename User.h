@@ -23,6 +23,17 @@
 #define AWAIT_OEND	27
 #define AWAIT_EMAIL	28
 
+#define UF_NAMEWORD	1	/* us_Flags bit: this session's name is registered
+				   in WordList (AddWord was called for it) — only
+				   clear it via FreeWord if this bit is set, see
+				   RemoveUser()/ExitUser() in SysSupport.c.
+				   INVARIANT: must be cleared whenever the name it
+				   was set for is freed or superseded (not just set
+				   once at registration), or a slot reused without a
+				   fresh-connection rebind (e.g. ExitUser() re-entry
+				   from Cmd_SaveUniverse/Act_Become) can go on to
+				   free a name it no longer owns. */
+
 
 struct User_Entry
 {

@@ -200,6 +200,60 @@ register ITEM *i;
 	return(0);
 }
 
+/*
+ *	Reserved wizard identity names. Keep this list in sync with the
+ *	literal comparisons in ArchWizard() above — this is the set of names
+ *	that grant full admin privileges purely by being used as a display
+ *	name (see docs/review-findings.md finding C2). New registrations
+ *	under any of these are blocked once any one of them is already
+ *	registered (AnyReservedWizardNameRegistered()), so a brand-new game
+ *	can still bootstrap its first wizard exactly once, but an established
+ *	game can't have this identity stolen or duplicated via registration.
+ */
+static char *ReservedWizardNames[]={
+	"Anarchy","Debugiit",BOSS1,BOSS2,BOSS3,BOSS4,BOSS5,NULL
+};
+
+int NameIsReservedWizardName(char *name)
+{
+	int ct=0;
+	while(ReservedWizardNames[ct])
+	{
+		if(stricmp(name,ReservedWizardNames[ct])==0)
+			return(1);
+		ct++;
+	}
+	return(0);
+}
+
+int AnyReservedWizardNameRegistered(void)
+{
+	UFF dummy;
+	int ct=0;
+	while(ReservedWizardNames[ct])
+	{
+		if(LoadPersona(ReservedWizardNames[ct],&dummy)!=-1)
+			return(1);
+		ct++;
+	}
+/*
+ *	A reserved wizard identity also counts as "registered" while it is
+ *	live in memory but not yet saved to disk - ArchWizard() grants
+ *	privilege from the in-memory ITEM the instant registration completes,
+ *	before any save ever happens, so a disk-only check would miss an
+ *	attacker registering a duplicate reserved name while the legitimate
+ *	wizard is online-but-unsaved.
+ */
+	ct=0;
+	while(ct<MAXUSER)
+	{
+		if(UserList[ct].us_Item && ArchWizard(UserList[ct].us_Item))
+			return(1);
+		ct++;
+	}
+	return(0);
+}
+
 char *NameOf(x)		/* Return the name of an item */
 ITEM *x;
 {
@@ -303,7 +357,7 @@ unsigned int u;
 		FreeItem(i);				/* Remove it all */
 	}
 	UserList[(unsigned short)u].us_Item=NULL;
-	if(*UserList[u].us_Name)
+	if(*UserList[u].us_Name && (UserList[u].us_Flags&UF_NAMEWORD))
 		FreeWord(UserList[(unsigned short)u].us_Name,WD_NOUN);
 	strcpy(UserList[(unsigned short)u].us_Name,"");
 	if(UserList[(unsigned short)u].us_Port!=NULL)
@@ -352,7 +406,11 @@ unsigned int u;
 	i->it_Perception=-1;		/* Delayed Expunge */
 	FreeItem(i);
 	UserList[(unsigned short)u].us_Item=NULL;
-	FreeWord(UserList[(unsigned short)u].us_Name,WD_NOUN);
+	if(*UserList[u].us_Name && (UserList[u].us_Flags&UF_NAMEWORD))
+	{
+		FreeWord(UserList[(unsigned short)u].us_Name,WD_NOUN);
+		UserList[u].us_Flags&=~UF_NAMEWORD;
+	}
 	UserList[(unsigned short)u].us_State=AWAIT_NAME;
 }
 	

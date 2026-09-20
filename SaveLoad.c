@@ -9,6 +9,7 @@
  \****************************************************************************/
 
 #include "System.h"
+#include <errno.h>
 
 /*
  *	Disk Save/Load functions
@@ -41,7 +42,20 @@ Module	"DiskIO";
 Version	"1.24";
 Author  "----*(A)";
 
-extern int errno;
+/* A pointer only survives the compiled bytecode's 2x16-bit packed
+   representation if it fits in 32 bits. See docs/review-findings.md
+   finding H2 — this is a safety net, not a fix for the underlying
+   16-bit-word bytecode format. */
+#define FITS_PACKED_WIDTH(p)	(sizeof(void *)<=4 || ((unsigned long)(void *)(p))>>32==0)
+
+/* Counts FITS_PACKED_WIDTH misses seen by LoadAction() across a whole
+   LoadSystem() pass, so LoadSystem() can emit a single summary warning
+   instead of one Log() call per operand — see docs/review-findings.md H2.
+   LoadAction() runs once per action per line of every table loaded, so
+   logging unconditionally there floods the log (and Log()'s fflush() on
+   every call slows every restart) on any real universe. */
+static int PackWidthWarnCount=0;
+
 extern ITEM *ItemList;
 /*
  *	Items are saved by direct ordered dump, all text dumped is done
@@ -871,6 +885,8 @@ register short *c;
 				case 3:t=(TPTR)3;break;
 				default:t=LoadComment(file);
 			 }
+			 if(!FITS_PACKED_WIDTH(t))
+				 PackWidthWarnCount++;
 			 SetTwo(c,(char *)t);
 			 c+=2;
 			 break;
@@ -880,6 +896,8 @@ register short *c;
 				case 3:t=(TPTR) 3;break;
 				default:t=LoadString(file);
 			 }
+			 if(!FITS_PACKED_WIDTH(t))
+				 PackWidthWarnCount++;
 			 SetTwo(c,(char *)t);
 			 c+=2;
 			 break;
@@ -892,6 +910,8 @@ register short *c;
 				case 9:i=(ITEM *)9;break;
 				default:i=LoadItem(file);
 			 }
+			 if(!FITS_PACKED_WIDTH(i))
+				 PackWidthWarnCount++;
 			 SetTwo(c,(char *)i);
 			 c+=2;
 			 break;
@@ -1239,6 +1259,7 @@ char *n;
 	if(a==NULL)
 		return(-1);
 	Load_Error=0;
+	PackWidthWarnCount=0;
 	v=ReadHeader(a);	/* Set up items */
 	while(ct<v)
 	{
@@ -1246,6 +1267,8 @@ char *n;
 		ct++;
 	}
 	LoadAllTables(a);
+	if(PackWidthWarnCount>0)
+		Log("WARNING: %d table operand(s) exceeded the safe pointer-packing width during load (see docs/review-findings.md H2)",PackWidthWarnCount);
 	free((char *)ItemArray);	/* Free Reloc Info */
 	LoadVocab(a);
 	if(Load_Format>1)	/* If new format database.. */
